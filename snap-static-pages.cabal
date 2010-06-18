@@ -1,0 +1,46 @@
+Name:                snap-static-pages
+Version:             0.0.1
+Synopsis:            A simple filesystem-based content management system for Snap
+Author:              Gregory Collins
+
+Stability:           Experimental
+Category:            Web
+Build-type:          Simple
+
+Cabal-Version:       >= 1.6
+
+Library
+    hs-source-dirs:
+        src
+    exposed-modules: Snap.StaticPages
+    other-modules:   Snap.StaticPages.Internal.Time
+                   , Snap.StaticPages.Internal.Exception
+                   , Snap.StaticPages.Internal.Util.ExcludeList
+                   , Snap.StaticPages.Internal.Types
+                   , Snap.StaticPages.Internal.Post
+                   , Snap.StaticPages.Internal.Handlers
+
+
+    ghc-options: -Wall -funbox-strict-fields -O2 -fvia-C -optc-O3 -funfolding-use-threshold=16
+    Build-Depends: base >= 4 && <5,
+                   bytestring,
+                   ConfigFile,
+                   containers,
+                   directory,
+                   feed,
+                   filepath,
+                   heist >= 0.2 && <0.3,
+                   hexpat >= 0.16 && <0.17,
+                   monads-fd >= 0.1 && <0.2,
+                   mtl,
+                   old-locale,
+                   snap-core >= 0.2 && <0.3,
+                   split,
+                   time,
+                   transformers,
+                   unix,
+                   utf8-string,
+                   xml
+
+
+
