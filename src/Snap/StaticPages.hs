@@ -6,6 +6,7 @@ FIXME: document this.
 
 module Snap.StaticPages
   ( loadStaticPages
+  , loadStaticPages'
   , reloadStaticPages
   , reloadStaticPages'
   , initStaticPages
@@ -43,6 +44,9 @@ import           Snap.StaticPages.Internal.Util.ExcludeList (ExcludeList)
 ------------------------------------------------------------------------------
 loadStaticPages :: FilePath -> IO (MVar StaticPagesState)
 loadStaticPages f = initStaticPages f >>= newMVar
+
+loadStaticPages' :: TemplateState Snap -> FilePath -> IO (MVar StaticPagesState)
+loadStaticPages' t f = initStaticPages' t f >>= newMVar
 
 
 reloadStaticPages :: MVar StaticPagesState -> IO ()
