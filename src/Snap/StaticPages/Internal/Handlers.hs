@@ -341,9 +341,19 @@ serveIndex soFar content = do
 
         -- here we take the tag's children as a bit of markup to be run for
         -- every post. We'll bind a fresh copy of the post for each run.
-        let perEach = X.getChildren node
+        let perEach' = X.getChildren node
 
-        allNodes <- liftM concat $ mapM (doOne state perEach) posts
+        -- the exception to this is when there are no posts; then we fetch the
+        -- <no-posts> tag, otherwise we filter it out.
+        let (noPosts,perEach) =
+                partition (\x -> X.getName x == "no-posts") perEach'
+
+        let noPost = if null noPosts then [] else X.getChildren $ head noPosts
+
+        allNodes <-
+            if null posts
+              then runNodeList noPost
+              else liftM concat $ mapM (doOne state perEach) posts
 
         stopRecursion
         restoreTS ts

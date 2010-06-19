@@ -7,6 +7,7 @@ FIXME: document this.
 module Snap.StaticPages
   ( loadStaticPages
   , reloadStaticPages
+  , reloadStaticPages'
   , initStaticPages
   , serveStaticPages
 --  , runStaticPagesHandler
@@ -46,8 +47,14 @@ loadStaticPages f = initStaticPages f >>= newMVar
 
 reloadStaticPages :: MVar StaticPagesState -> IO ()
 reloadStaticPages mv = modifyMVar_ mv $ \st -> do
-    let path = staticPagesPath st
-    initStaticPages path
+    let p = staticPagesPath st
+    initStaticPages p
+
+
+reloadStaticPages' :: TemplateState Snap -> MVar StaticPagesState -> IO ()
+reloadStaticPages' ts mv = modifyMVar_ mv $ \st -> do
+    let p = staticPagesPath st
+    initStaticPages' ts p
 
 
 {-|
@@ -65,9 +72,9 @@ initStaticPages = initStaticPages' emptyTemplateState
 initStaticPages' :: TemplateState Snap -- ^ root template state
                  -> FilePath           -- ^ path to staticPages directory
                  -> IO StaticPagesState
-initStaticPages' ts path = do
+initStaticPages' ts pth = do
     -- make sure directories exist
-    mapM_ failIfNotDir [path, contentDir, templateDir]
+    mapM_ failIfNotDir [pth, contentDir, templateDir]
 
     (feed, siteURL, baseURL, excludeList) <- readConfig configFilePath
 
@@ -82,7 +89,7 @@ initStaticPages' ts path = do
                         etemplates
 
     return StaticPagesState {
-                      staticPagesPath          = path
+                      staticPagesPath          = pth
                     , staticPagesSiteURL       = siteURL
                     , staticPagesBaseURL       = baseURL
                     , staticPagesPostMap       = cmap
@@ -101,12 +108,12 @@ initStaticPages' ts path = do
     failIfNotDir :: FilePath -> IO ()
     failIfNotDir d = unlessM (doesDirectoryExist d)
                              (throwIO $ StaticPagesException
-                                      $ printf "'%s' is not a directory" path)
+                                      $ printf "'%s' is not a directory" pth)
 
     --------------------------------------------------------------------------
-    configFilePath = path </> "config"
-    contentDir     = path </> "content"
-    templateDir    = path </> "templates"
+    configFilePath = pth </> "config"
+    contentDir     = pth </> "content"
+    templateDir    = pth </> "templates"
 
 
 ------------------------------------------------------------------------------
