@@ -34,7 +34,7 @@ Library
                    monads-fd >= 0.1 && <0.2,
                    mtl,
                    old-locale,
-                   snap-core >= 0.2 && <0.3,
+                   snap-core >= 0.3 && <0.4,
                    split,
                    time,
                    transformers,
