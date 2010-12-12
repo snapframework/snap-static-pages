@@ -16,6 +16,7 @@ module Snap.StaticPages
   , StaticPagesException
   , staticPagesExceptionMsg
   , StaticPagesState
+  , staticPagesTemplateDir 
   )
 where
 
@@ -71,20 +72,20 @@ reloadStaticPages' ts mv = modifyMVar_ mv $ \st -> do
 -}
 initStaticPages :: FilePath        -- ^ path to staticPages directory
                 -> IO StaticPagesState
-initStaticPages = initStaticPages' emptyTemplateState
+initStaticPages pth = initStaticPages' (emptyTemplateState pth) pth
 
 initStaticPages' :: TemplateState Snap -- ^ root template state
                  -> FilePath           -- ^ path to staticPages directory
                  -> IO StaticPagesState
 initStaticPages' ts pth = do
     -- make sure directories exist
-    mapM_ failIfNotDir [pth, contentDir, templateDir]
+    mapM_ failIfNotDir [pth, contentDir, staticPagesTemplateDir pth]
 
     (feed, siteURL, baseURL, excludeList) <- readConfig configFilePath
 
     cmap      <- buildContentMap baseURL contentDir
 
-    etemplates <- loadTemplates templateDir ts
+    etemplates <- loadTemplates (staticPagesTemplateDir pth) ts
 
     templates <- either (\s -> throwIO $
                                StaticPagesException $
@@ -117,10 +118,14 @@ initStaticPages' ts pth = do
     --------------------------------------------------------------------------
     configFilePath = pth </> "config"
     contentDir     = pth </> "content"
-    templateDir    = pth </> "templates"
 
 
 ------------------------------------------------------------------------------
+-- | Takes the static pages root directory and returns the template directory
+-- for static pages.  If you construct your own 'TemplateState', use this to
+-- construct the parameter to emptyTemplateState.
+staticPagesTemplateDir :: FilePath -> FilePath
+staticPagesTemplateDir pth = pth </> "templates"
 
 getM :: Cfg.Get_C a => Cfg.ConfigParser -> String -> String -> Maybe a
 getM cp section = either (const Nothing) Just . Cfg.get cp section
