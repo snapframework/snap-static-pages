@@ -5,7 +5,7 @@ module Snap.StaticPages.Internal.Handlers ( serveStaticPages ) where
 
 import             Control.Concurrent.MVar
 import             Control.Exception (assert)
-import "monads-fd" Control.Monad.Reader
+import             Control.Monad.Reader
 import qualified   Data.ByteString.Char8 as B
 import qualified   Data.ByteString.Lazy.Char8 as L
 import             Data.ByteString.Char8 (ByteString)
