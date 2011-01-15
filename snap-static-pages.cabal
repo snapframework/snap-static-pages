@@ -33,7 +33,7 @@ Library
                    hexpat >= 0.19.5 && <0.20,
                    mtl >= 2,
                    old-locale,
-                   snap-core >= 0.3 && <0.4,
+                   snap-core >= 0.3.1.1 && <0.4,
                    split,
                    time,
                    transformers,
