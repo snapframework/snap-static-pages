@@ -3,23 +3,27 @@
 
 module Snap.StaticPages.Internal.Handlers ( serveStaticPages ) where
 
-import             Control.Concurrent.MVar
-import             Control.Exception (assert)
-import             Control.Monad.Reader
-import qualified   Data.ByteString.Char8 as B
-import qualified   Data.ByteString.Lazy.Char8 as L
-import             Data.ByteString.Char8 (ByteString)
-import qualified   Data.ByteString.UTF8 as UTF8
-import             Data.List
-import qualified   Data.Map as Map
-import             Data.Maybe
-import             Snap.Types
-import             Snap.Util.FileServe
-import qualified   Text.Atom.Feed as Atom
-import qualified   Text.Atom.Feed.Export as Atom
-import             Text.Templating.Heist
-import qualified   Text.XML.Expat.Tree as X
-import qualified   Text.XML.Light.Output as XML
+import           Blaze.ByteString.Builder
+import           Control.Concurrent.MVar
+import           Control.Exception (assert)
+import           Control.Monad.Reader
+import qualified Data.ByteString.Char8 as B
+import qualified Data.ByteString.Lazy.Char8 as L
+import           Data.ByteString.Char8 (ByteString)
+import qualified Data.ByteString.UTF8 as UTF8
+import           Data.List
+import qualified Data.Map as Map
+import           Data.Maybe
+import           Data.Text (Text)
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
+import           Snap.Types
+import           Snap.Util.FileServe
+import qualified Text.Atom.Feed as Atom
+import qualified Text.Atom.Feed.Export as Atom
+import           Text.Templating.Heist
+import qualified Text.XmlHtml as X
+import qualified Text.XML.Light.Output as XML
 ------------------------------------------------------------------------------
 import           Snap.StaticPages.Internal.Post
 import           Snap.StaticPages.Internal.Time
@@ -111,11 +115,13 @@ runTemplateForPost :: [ByteString]   -- ^ path to the post, relative
                                      -- this list will contain
                                      -- @["foo", "bar", "baz"]@.
                    -> TemplateState Snap
-                   -> StaticPagesMonad (Maybe ByteString)
+                   -> StaticPagesMonad (Maybe Builder)
 runTemplateForPost pathList templates = do
     assert (not $ null pathList) (return ())
 
-    lift $ firstM $ map (renderTemplate templates) templatesToSearch
+    lift $ firstM $ flip map templatesToSearch $ \t -> do
+        r <- renderTemplate templates t
+        return (fmap fst r)
 
   where
     -- if requested "foo/bar/baz", then containingDirs contains
@@ -135,27 +141,29 @@ runTemplateForDirectory :: [ByteString]   -- ^ path to the post, relative
                                           -- this list will contain
                                           -- @["foo", "bar", "baz"]@.
                    -> TemplateState Snap
-                   -> StaticPagesMonad (Maybe ByteString)
+                   -> StaticPagesMonad (Maybe Builder)
 runTemplateForDirectory pathList templates = do
     assert (not $ null pathList) (return ())
 
-    lift $ renderTemplate templates (listToPath $ pathList ++ ["index"])
+    lift $ do
+        r <- renderTemplate templates (listToPath $ pathList ++ ["index"])
+        return (fmap fst r)
 
 
 ------------------------------------------------------------------------------
-showEC :: Atom.EntryContent -> ByteString
-showEC (Atom.TextContent s)  = UTF8.fromString s
-showEC (Atom.HTMLContent s)  = UTF8.fromString s
+showEC :: Atom.EntryContent -> Text
+showEC (Atom.TextContent s)  = T.pack s
+showEC (Atom.HTMLContent s)  = T.pack s
 showEC _                     = ""
 
-showTC :: Atom.TextContent -> ByteString
-showTC (Atom.TextString s)  = UTF8.fromString s
-showTC (Atom.HTMLString s)  = UTF8.fromString s
+showTC :: Atom.TextContent -> Text
+showTC (Atom.TextString s)  = T.pack s
+showTC (Atom.HTMLString s)  = T.pack s
 showTC _                     = ""
 
-showPerson :: Atom.Person -> ByteString
+showPerson :: Atom.Person -> Text
 showPerson (Atom.Person name _ email _) =
-    UTF8.fromString $ name ++ em
+    T.pack $ name ++ em
   where
     em = maybe "" (\e -> " <" ++ e ++ ">") email
 
@@ -167,46 +175,46 @@ bindPostAttrs :: (MonadIO m) =>
               -> Post
               -> m (TemplateState Snap)
 bindPostAttrs state ts post@(Post p) = do
-    let title = B.pack $ concat
+    let title = T.pack $ concat
                   [ getTextContent . Atom.feedTitle . staticPagesFeedInfo $ state
                   , (let s = getTextContent $ Atom.entryTitle p
                      in if null s then "" else ": " ++ s)
                   ]
 
-    e <- liftIO $ parseDoc bodyBS
+    let e = X.parseHTML "" bodyBS
 
-    let body = either (\s -> [X.Text $
-                              B.pack $
+    let body = either (\s -> [X.TextNode $
+                              T.pack $
                               "error parsing pandoc output: " ++ s])
-                      snd
+                      X.docContent
                       e
 
-    e2 <- liftIO $ parseDoc summaryBS
+    let e2 = X.parseHTML "" summaryBS
 
-    let summary = either (\s -> [X.Text $
-                                 B.pack $
+    let summary = either (\s -> [X.TextNode $
+                                 T.pack $
                                  "error parsing pandoc output: " ++ s])
-                         snd
+                         X.docContent
                          e2
 
     return $ bindSplice "post:content" (return body) $
              bindSplice "post:summary" (return summary) $
-             bindSplice "pageTitle"    (return [X.Text title]) ts'
+             bindSplice "pageTitle"    (return [X.TextNode title]) ts'
 
   where
-    authors = B.intercalate ", " (map showPerson $ Atom.entryAuthors p)
+    authors = T.intercalate ", " (map showPerson $ Atom.entryAuthors p)
 
     ts' = bindStrings [ ("post:id"      , url                            )
-                      , ("post:date"    , B.pack $ friendlyTime $
+                      , ("post:date"    , T.pack $ friendlyTime $
                                           getPostTime post               )
                       , ("post:url"     , url                            )
                       , ("post:title"   , showTC $ Atom.entryTitle p     )
                       , ("post:authors" , authors                        ) ] ts
 
-    url = B.pack $ Atom.entryId p
+    url = T.pack $ Atom.entryId p
 
-    bodyBS = showEC $ fromMaybe (Atom.TextContent "") $ Atom.entryContent p
-    summaryBS = showTC $ fromMaybe (Atom.HTMLString "") $ Atom.entrySummary p
+    bodyBS = T.encodeUtf8 $ showEC $ fromMaybe (Atom.TextContent "") $ Atom.entryContent p
+    summaryBS = T.encodeUtf8 $ showTC $ fromMaybe (Atom.HTMLString "") $ Atom.entrySummary p
 
 
 
@@ -232,7 +240,7 @@ servePost soFar post = do
     b <- maybe (lift mzero) return mb
 
     lift $ modifyResponse $ setContentType "text/html; charset=utf-8"
-    lift $ writeBS b
+    lift $ writeBuilder b
 
 
 ------------------------------------------------------------------------------
@@ -284,26 +292,26 @@ serveIndex soFar content = do
 
     tmpl'' <- case mbPost of
                 (Just (ContentPost p)) -> do
-                    let bodyBS = showEC $
+                    let bodyBS = T.encodeUtf8 $ showEC $
                                  fromMaybe (Atom.TextContent "") $
                                  Atom.entryContent (unPost p)
-                    e <- liftIO $ parseDoc bodyBS
+                    let e = X.parseHTML "" bodyBS
 
                     let body =
-                          either (\s -> [X.Text $
-                                         B.pack $
+                          either (\s -> [X.TextNode $
+                                         T.pack $
                                          "error parsing pandoc output: " ++ s])
-                           snd
+                           X.docContent
                            e
                     return $ bindSplice "index:content" (return body) tmpl'
 
                 _ -> return tmpl'
 
 
-    let autoDiscovery' = X.mkElement "link"
+    let autoDiscovery' = X.Element "link"
                                 [ ("rel" , "alternate"           )
                                 , ("type", "application/atom+xml")
-                                , ("href", B.pack $ feedURL      ) ]
+                                , ("href", T.pack $ feedURL      ) ]
                                 []
 
     let autoDiscovery = if EL.matchList soFar excludes
@@ -311,7 +319,7 @@ serveIndex soFar content = do
                           else [autoDiscovery']
 
 
-    let tmpl''' = bindSplices [ ("pageTitle", return [X.Text $ B.pack title])
+    let tmpl''' = bindSplices [ ("pageTitle", return [X.TextNode $ T.pack title])
                               , ("feed:autoDiscoveryLink", return autoDiscovery) ]
                               tmpl''
 
@@ -322,11 +330,11 @@ serveIndex soFar content = do
     b  <- maybe (lift mzero) return mb
 
     lift $ modifyResponse $ setContentType "text/html; charset=utf-8"
-    lift $ writeBS b
+    lift $ writeBuilder b
 
 
   where
-    doOne :: StaticPagesState -> [Node] -> Post -> Splice Snap
+    doOne :: StaticPagesState -> [X.Node] -> Post -> Splice Snap
     doOne state perEach post = do
         ts  <- getTS
         ts' <- bindPostAttrs state ts post
@@ -341,14 +349,14 @@ serveIndex soFar content = do
 
         -- here we take the tag's children as a bit of markup to be run for
         -- every post. We'll bind a fresh copy of the post for each run.
-        let perEach' = X.getChildren node
+        let perEach' = X.childNodes node
 
         -- the exception to this is when there are no posts; then we fetch the
         -- <no-posts> tag, otherwise we filter it out.
         let (noPosts,perEach) =
-                partition (\x -> X.getName x == "no-posts") perEach'
+                partition (\x -> X.tagName x == Just "no-posts") perEach'
 
-        let noPost = if null noPosts then [] else X.getChildren $ head noPosts
+        let noPost = if null noPosts then [] else X.childNodes $ head noPosts
 
         allNodes <-
             if null posts
