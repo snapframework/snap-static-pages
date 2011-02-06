@@ -40,6 +40,7 @@ Library
                    transformers,
                    unix,
                    utf8-string,
+                   xml,
                    xmlhtml >= 0.1 && <0.2
 
 
