@@ -10,7 +10,6 @@ import           Control.Monad.Reader
 import qualified Data.ByteString.Char8 as B
 import qualified Data.ByteString.Lazy.Char8 as L
 import           Data.ByteString.Char8 (ByteString)
-import qualified Data.ByteString.UTF8 as UTF8
 import           Data.List
 import qualified Data.Map as Map
 import           Data.Maybe
@@ -18,7 +17,7 @@ import           Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import           Snap.Types
-import           Snap.Util.FileServe
+import qualified Snap.Util.FileServe as FS
 import qualified Text.Atom.Feed as Atom
 import qualified Text.Atom.Feed.Export as Atom
 import           Text.Templating.Heist
@@ -66,7 +65,7 @@ serveStaticPages' state = method GET $ do
           else
             maybe mzero
                   (\f -> case f of
-                           (ContentStatic fp)     -> lift $ fileServeSingle fp
+                           (ContentStatic fp)     -> lift $ FS.serveFile fp
                            (ContentPost post)     -> servePost (soFar ++ [a]) post
                            (ContentDirectory _ d) -> serveIndex (soFar ++ [a]) d)
                   (Map.lookup a content)

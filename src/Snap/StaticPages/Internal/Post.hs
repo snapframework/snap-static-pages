@@ -35,16 +35,20 @@ where
 ------------------------------------------------------------------------
 import           Control.Applicative
 import           Control.Exception
-import "mtl"     Control.Monad.Error
-import "mtl"     Control.Monad.Identity
+import           Control.Monad.Error
+import qualified Data.Attoparsec.Text as Atto
+import           Data.Attoparsec.Text (Parser)
 import qualified Data.ByteString.Char8 as B
 import           Data.ByteString.Char8 (ByteString)
 import qualified Data.ByteString.UTF8 as UTF8
 import           Data.Char
-import qualified Data.ConfigFile as Cfg
 import           Data.List
 import           Data.List.Split
 import qualified Data.Map as Map
+import           Data.Map (Map)
+import           Data.Text (Text)
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as T
 import           Data.Time.Clock
 import           Data.Time.Clock.POSIX
 import           Data.Time.LocalTime
@@ -52,7 +56,6 @@ import           System.Directory
 import           System.FilePath
 import           System.Posix.Files
 import           Text.Atom.Feed
-import           Text.Printf
 import           Text.XML.Light
 import           Text.Templating.Heist.Splices.Markdown
 
@@ -90,10 +93,16 @@ parsePersons = map mkPerson . endBy ","
         (c,_)  = span (/= '>') b
 
 
+emptyPost :: String -> Date -> Post
+emptyPost pId atm = Post $ nullEntry pId (HTMLString "") atm
+
+
+{-
+
+FIXME: REMOVE
 
 parseHeaders :: String -> (Either Cfg.CPError Cfg.ConfigParser)
 parseHeaders = Cfg.readstring Cfg.emptyCP
-
 
 getKVP :: Cfg.ConfigParser -> String -> Maybe String
 getKVP cp key = retval
@@ -102,6 +111,55 @@ getKVP cp key = retval
     e = runIdentity . runErrorT $ Cfg.get cp "DEFAULT" key
     retval = case e of Left _  -> Nothing
                        Right x -> Just x
+-}
+
+
+headerParser :: Parser [(Text,Text)]
+headerParser = go id
+  where
+    endOfLine c = c == '\r' || c == '\n'
+
+    parseLine = do
+        !l <- Atto.takeWhile (not . endOfLine)
+        _  <- Atto.takeWhile endOfLine
+        return l
+
+    goLine = do
+        k <- Atto.takeWhile (\c -> c /= ':' && not (endOfLine c))
+        _ <- Atto.takeWhile1 (== ':')
+        v <- Atto.takeWhile (not . endOfLine)
+        _ <- Atto.takeWhile endOfLine
+
+        continue (T.strip k) (T.strip v)
+
+    continue !k !v = (Atto.try $ do
+                          _ <- Atto.takeWhile1 isSpace
+                          l <- parseLine
+                          continue k (T.concat [ v, " ", T.strip l ]))
+                     <|> return (k,v)
+
+    go !dlist = do
+        end <- Atto.atEnd
+        if end
+          then return $! dlist []
+          else do
+              (k,v) <- goLine
+              go (dlist . ((T.toLower k, v):))
+
+
+stringToHeaders :: ByteString -> IO (Map Text Text)
+stringToHeaders bsHdrs = do
+    liftM (Map.fromList) $
+        either (throwIO . StaticPagesException . formatMsg)
+               return
+               (Atto.parseOnly headerParser txtHdrs)
+  where
+    formatMsg s = concat [ "Error parsing headers: "
+                         , s
+                         , "\nHeaders were:\n"
+                         , T.unpack txtHdrs ]
+    txtHdrs = T.decodeUtf8 bsHdrs
+
 
 
 headerTable :: [(String, String -> Post -> Post)]
@@ -129,6 +187,20 @@ breakPost s = (B.unlines hdr, B.unlines body)
     hdr          = chomp `map` hdr'
 
 
+parseHeaders :: ByteString   -- ^ headers
+             -> [(String, String -> Post -> Post)]  -- ^ header table
+             -> Post
+             -> IO Post
+parseHeaders str table post = do
+    kvps <- stringToHeaders str
+    
+    return $ foldl (\p (k,f) -> case Map.lookup (T.pack k) kvps of
+                                  Nothing -> p
+                                  Just x  -> f (T.unpack x) p)
+                   post
+                   table
+
+
 readPost :: String -> FilePath -> IO Post
 readPost pId path = do
     !tz  <- getCurrentTimeZone
@@ -139,20 +211,7 @@ readPost pId path = do
 
     let (hdr,body) = breakPost contents
 
-    let !hdrS = B.unpack hdr
-
-    let !cfg = case parseHeaders hdrS of
-                Left e -> error
-                          $ printf "Couldn't parse headers from %s:\n%s"
-                                   path (show e)
-                Right r -> r
-
-    let !post = foldl (\p (k,f) ->
-                           case getKVP cfg k of
-                             Nothing -> p
-                             Just x  -> f x p)
-                      (Post $ nullEntry pId (HTMLString "") atm)
-                      headerTable
+    !post <- parseHeaders hdr headerTable $ emptyPost pId atm
 
     mbPandocpath <- findExecutable "pandoc"
 
