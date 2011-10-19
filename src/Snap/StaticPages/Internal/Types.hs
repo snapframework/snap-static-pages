@@ -10,7 +10,7 @@ module Snap.StaticPages.Internal.Types
   , getPostTime
   , ContentMap
   , ContentItem(..)
-  , StaticPagesState(..)
+  , StaticPages(..)
   )
 where
 
@@ -19,9 +19,7 @@ import           Data.ByteString.Char8 (ByteString)
 import           Data.Map (Map)
 import           Data.Maybe
 import           Data.Time.LocalTime
-import           Snap.Types
 import qualified Text.Atom.Feed as Atom
-import           Text.Templating.Heist
 ------------------------------------------------------------------------------
 import           Snap.StaticPages.Internal.Exception
 import           Snap.StaticPages.Internal.Time
@@ -52,23 +50,19 @@ data ContentItem =
 
 {-|
 
-StaticPagesState is an opaque data type that holds StaticPages internal state.
+StaticPages is an opaque data type that holds StaticPages internal state.
 
 -}
-data StaticPagesState = StaticPagesState
+data StaticPages = StaticPages
     { staticPagesPath      :: FilePath           -- ^ path on disk
     , staticPagesSiteURL   :: String             -- ^ site URL, minus slash
                                                  --   (e.g. http://foo.com)
     , staticPagesBaseURL   :: String             -- ^ base URL of content section,
                                                  --   e.g. "/posts"
     , staticPagesPostMap   :: ContentMap         -- ^ content
-    , staticPagesTemplates :: TemplateState Snap -- ^ templates
     , staticPagesFeedInfo  :: Atom.Feed          -- ^ feed info
 
     , staticPagesFeedExcludes :: ExcludeList     -- ^ these URLs won't appear in
                                                  -- feeds or in post listings
-
-    , staticPagesExtraTmpl :: TemplateState Snap -> Snap (TemplateState Snap)
-                                         -- ^ extra template variables get
-                                         --   inserted here
     }
+

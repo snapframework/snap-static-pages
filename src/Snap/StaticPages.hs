@@ -7,37 +7,32 @@ FIXME: document this.
 
 
 module Snap.StaticPages
-  ( loadStaticPages
-  , loadStaticPages'
-  , reloadStaticPages
-  , reloadStaticPages'
-  , initStaticPages
-  , serveStaticPages
+  ( staticPagesInit
 --  , runStaticPagesHandler
 --  , addExtraTemplateArguments
   , StaticPagesException
   , staticPagesExceptionMsg
-  , StaticPagesState
+  , StaticPages
   , staticPagesTemplateDir
   )
 where
 
 ------------------------------------------------------------------------------
-import           Control.Concurrent.MVar
 import           Control.Exception
 import           Control.Monad
+import           Control.Monad.Trans
 import qualified Data.ByteString.Char8 as B
 import           Data.Aeson
 import qualified Data.Attoparsec as Atto
 import           Data.List
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
-import           Snap.Types
+import           Snap.Snaplet
+import           Snap.Snaplet.Heist
 import           System.Directory
 import           System.FilePath
 import qualified Text.Atom.Feed as Atom
 import           Text.Printf
-import           Text.Templating.Heist
 
 ------------------------------------------------------------------------------
 import           Snap.StaticPages.Internal.Handlers
@@ -47,69 +42,44 @@ import qualified Snap.StaticPages.Internal.Util.ExcludeList as EL
 import           Snap.StaticPages.Internal.Util.ExcludeList (ExcludeList)
 
 
-------------------------------------------------------------------------------
-loadStaticPages :: FilePath -> IO (MVar StaticPagesState)
-loadStaticPages f = initStaticPages f >>= newMVar
-
-loadStaticPages' :: TemplateState Snap -> FilePath -> IO (MVar StaticPagesState)
-loadStaticPages' t f = initStaticPages' t f >>= newMVar
-
-
-reloadStaticPages :: MVar StaticPagesState -> IO ()
-reloadStaticPages mv = modifyMVar_ mv $ \st -> do
-    let p = staticPagesPath st
-    initStaticPages p
-
-
-reloadStaticPages' :: TemplateState Snap -> MVar StaticPagesState -> IO ()
-reloadStaticPages' ts mv = modifyMVar_ mv $ \st -> do
-    let p = staticPagesPath st
-    initStaticPages' ts p
+desc :: T.Text
+desc = "Simple blog backed by flat files"
 
 
 {-|
 
   Initialize a static pages instance. Given the name of a directory on the
-  disk, 'initStaticPages' searches it for configuration, content, and template
-  files, and produces a finished 'StaticPagesState' value. Throws a
+  disk, 'staticPagesInit' searches it for configuration, content, and template
+  files, and produces a finished 'StaticPages' value. Throws a
   'StaticPagesException' if there was an error reading the state.
 
 -}
-initStaticPages :: FilePath        -- ^ path to staticPages directory
-                -> IO StaticPagesState
-initStaticPages pth = initStaticPages' (emptyTemplateState pth) pth
-
-initStaticPages' :: TemplateState Snap -- ^ root template state
-                 -> FilePath           -- ^ path to staticPages directory
-                 -> IO StaticPagesState
-initStaticPages' ts pth = do
+staticPagesInit :: HasHeist b
+                => FilePath
+                -- ^ path to staticPages directory
+                -> SnapletInit b StaticPages
+staticPagesInit p = makeSnaplet "static-pages" desc Nothing $ do
+    let pth = staticPagesTemplateDir p
     -- make sure directories exist
-    mapM_ failIfNotDir [pth, contentDir, staticPagesTemplateDir pth]
+    liftIO $ mapM_ failIfNotDir [p, contentDir, pth]
 
     (StaticPagesConfig feed siteURL baseURL excludeList) <-
-        readConfig configFilePath
+        liftIO $ readConfig configFilePath
 
-    cmap      <- buildContentMap baseURL contentDir
+    cmap <- liftIO $ buildContentMap baseURL contentDir
 
-    etemplates <- loadTemplates (staticPagesTemplateDir pth) ts
+    url <- getSnapletRootURL
+    addTemplatesAt url pth
+    addRoutes [ ("", serveStaticPages) ]
 
-    templates <- either (\s -> throwIO $
-                               StaticPagesException $
-                               "error loading templates: " ++ s)
-                        return
-                        etemplates
-
-    return StaticPagesState {
-                      staticPagesPath          = pth
+    return StaticPages {
+                      staticPagesPath          = p
                     , staticPagesSiteURL       = siteURL
                     , staticPagesBaseURL       = baseURL
                     , staticPagesPostMap       = cmap
-                    , staticPagesTemplates     = templates
                     , staticPagesFeedInfo      = feed
                     , staticPagesFeedExcludes  = excludeList
-                    , staticPagesExtraTmpl     = return
                     }
-
   where
     --------------------------------------------------------------------------
     unlessM :: IO Bool -> IO () -> IO ()
@@ -119,11 +89,11 @@ initStaticPages' ts pth = do
     failIfNotDir :: FilePath -> IO ()
     failIfNotDir d = unlessM (doesDirectoryExist d)
                              (throwIO $ StaticPagesException
-                                      $ printf "'%s' is not a directory" pth)
+                                      $ printf "'%s' is not a directory" p)
 
     --------------------------------------------------------------------------
-    configFilePath = pth </> "config"
-    contentDir     = pth </> "content"
+    configFilePath = p </> "config"
+    contentDir     = p </> "content"
 
 
 ------------------------------------------------------------------------------
