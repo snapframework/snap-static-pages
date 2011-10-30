@@ -39,13 +39,10 @@ Library
                    snap >= 0.6 && <0.7,
                    snap-core >= 0.6 && <0.7,
                    split,
+                   system-fileio,
                    text >= 0.11 && <0.12,
                    time,
                    transformers,
-                   unix,
                    utf8-string,
                    xml,
                    xmlhtml >= 0.1 && <0.2
-
-
-
