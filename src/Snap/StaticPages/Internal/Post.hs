@@ -46,15 +46,15 @@ import           Data.List
 import           Data.List.Split
 import qualified Data.Map as Map
 import           Data.Map (Map)
+import           Data.String
 import           Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
 import           Data.Time.Clock
-import           Data.Time.Clock.POSIX
 import           Data.Time.LocalTime
+import qualified Filesystem as F
 import           System.Directory
 import           System.FilePath
-import           System.Posix.Files
 import           Text.Atom.Feed
 import           Text.XML.Light
 import           Text.Templating.Heist.Splices.Markdown
@@ -68,10 +68,7 @@ import           Snap.StaticPages.Internal.Util.ExcludeList (ExcludeList)
 
 
 getTimeStamp :: FilePath -> IO UTCTime
-getTimeStamp file =
-  (posixSecondsToUTCTime . realToFrac)
-    <$> modificationTime
-    <$> getFileStatus file
+getTimeStamp filePath = F.getModified $ fromString filePath
 
 
 trim :: String -> String
