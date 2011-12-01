@@ -98,8 +98,7 @@ staticPagesInit p = makeSnaplet "static-pages" desc Nothing $ do
 
 ------------------------------------------------------------------------------
 -- | Takes the static pages root directory and returns the template directory
--- for static pages.  If you construct your own 'TemplateState', use this to
--- construct the parameter to emptyTemplateState.
+-- for static pages.
 staticPagesTemplateDir :: FilePath -> FilePath
 staticPagesTemplateDir pth = pth </> "templates"
 

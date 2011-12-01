@@ -1,5 +1,5 @@
 Name:                snap-static-pages
-Version:             0.1
+Version:             0.2
 Synopsis:            A simple filesystem-based content management system for Snap
 Author:              Gregory Collins
 
@@ -23,9 +23,8 @@ Library
 
     ghc-options: -Wall -funbox-strict-fields -O2 -funfolding-use-threshold=16
     Build-Depends: base >= 4 && <5,
-                   aeson == 0.3.*,
-                   attoparsec >= 0.8.1 && <0.10,
-                   attoparsec-text >= 0.8.5 && <0.9,
+                   aeson == 0.4.*,
+                   attoparsec >= 0.10 && <0.11,
                    blaze-builder,
                    bytestring,
                    containers,
@@ -33,11 +32,11 @@ Library
                    directory,
                    feed,
                    filepath,
-                   heist >= 0.6 && <0.7,
+                   heist >= 0.7 && <0.8,
                    mtl >= 2,
                    old-locale,
-                   snap >= 0.6 && <0.7,
-                   snap-core >= 0.6 && <0.7,
+                   snap >= 0.7 && <0.8,
+                   snap-core >= 0.7 && <0.8,
                    split,
                    system-fileio,
                    text >= 0.11 && <0.12,
