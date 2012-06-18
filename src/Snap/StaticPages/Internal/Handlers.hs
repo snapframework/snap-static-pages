@@ -16,6 +16,8 @@ import           Data.Maybe
 import           Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T
+import qualified Data.Text.Lazy as LT
+import qualified Data.Text.Lazy.Encoding as LT
 import           Snap.Core
 import           Snap.Snaplet
 import           Snap.Snaplet.Heist
@@ -351,7 +353,7 @@ serveFeed soFar content = do
                       }
 
     modifyResponse $ setContentType "application/atom+xml"
-    writeLBS $ L.pack $ XML.showElement $ Atom.xmlFeed feed
+    writeLBS $ LT.encodeUtf8 $ LT.pack $ XML.showElement $ Atom.xmlFeed feed
 
 {-
     hasTemplate   <- lift $ liftM isJust $ findTemplateForDirectory soFar
