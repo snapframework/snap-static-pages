@@ -57,7 +57,7 @@ import           System.Directory
 import           System.FilePath
 import           Text.Atom.Feed
 import           Text.XML.Light
-import           Text.Templating.Heist.Splices.Markdown
+import           Heist.Splices.Markdown
 
 ------------------------------------------------------------------------
 import           Snap.StaticPages.Internal.Time
@@ -145,8 +145,8 @@ headerParser = go id
 
 
 stringToHeaders :: ByteString -> IO (Map Text Text)
-stringToHeaders bsHdrs = do
-    liftM (Map.fromList) $
+stringToHeaders bsHdrs =
+    liftM Map.fromList $
         either (throwIO . StaticPagesException . formatMsg)
                return
                (Atto.parseOnly headerParser txtHdrs)

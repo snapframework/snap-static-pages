@@ -24,7 +24,9 @@ import           Snap.Snaplet.Heist
 import qualified Snap.Util.FileServe as FS
 import qualified Text.Atom.Feed as Atom
 import qualified Text.Atom.Feed.Export as Atom
-import           Text.Templating.Heist
+import           Heist
+import           Heist.Interpreted
+import           Heist.Splices
 import qualified Text.XmlHtml as X
 import qualified Text.XML.Light.Output as XML
 ------------------------------------------------------------------------------
@@ -52,7 +54,7 @@ serveStaticPages = method GET $ do
     --------------------------------------------------------------------------
     serve :: HasHeist b => [ByteString] -> [ByteString] -> ContentMap
           -> StaticPagesHandler b
-    serve soFar paths content = do
+    serve soFar paths content =
         case paths of
           []      -> serveIndex soFar content
           (a:[])  -> serveFile soFar a content
@@ -62,7 +64,7 @@ serveStaticPages = method GET $ do
     --------------------------------------------------------------------------
     serveFile :: HasHeist b => [ByteString] -> ByteString -> ContentMap
               -> StaticPagesHandler b
-    serveFile soFar a content = do
+    serveFile soFar a content =
         if a == "feed.xml" then
             serveFeed soFar content
           else
@@ -95,7 +97,7 @@ serveStaticPages = method GET $ do
 -- | Take a path list @[\"foo\",\"bar\",\"baz\"]@ and turn it into
 -- @\"foo/bar/baz\"@
 listToPath :: [ByteString] -> ByteString
-listToPath l = B.concat $ ("/": intersperse "/" l)
+listToPath l = B.concat ("/": intersperse "/" l)
 
 
 ------------------------------------------------------------------------------
@@ -113,7 +115,7 @@ runTemplateForPost :: HasHeist b
 runTemplateForPost pathList = do
     assert (not $ null pathList) (return ())
 
-    msum $ flip map templatesToSearch $ \t -> do
+    msum $ flip map templatesToSearch $ \t ->
         renderAs "text/html; charset=utf-8" t
 
   where
@@ -121,8 +123,8 @@ runTemplateForPost pathList = do
     -- [["foo","bar"], ["foo"], []]
     containingDirs    = tail . reverse . inits $ pathList
 
-    templatesToSearch = (listToPath pathList :
-                         map (\d -> listToPath $ d ++ ["post"]) containingDirs)
+    templatesToSearch = listToPath pathList :
+                         map (\d -> listToPath $ d ++ ["post"]) containingDirs
 
 
 
@@ -159,8 +161,8 @@ postAttrs st post@(Post p) =
   where
     title = T.pack $ concat
               [ getTextContent . Atom.feedTitle . staticPagesFeedInfo $ st
-              , (let s = getTextContent $ Atom.entryTitle p
-                 in if null s then "" else ": " ++ s)
+              , let s = getTextContent $ Atom.entryTitle p
+                 in if null s then "" else ": " ++ s
               ]
 
     e = X.parseHTML "" bodyBS
@@ -199,7 +201,7 @@ getTextContent _                   = undefined -- don't support that yet
 servePost :: HasHeist b => [ByteString] -> Post -> StaticPagesHandler b
 servePost soFar post = do
     st <- get
-    withSplices (map (second liftHeist) $ postAttrs st post) $ runTemplateForPost soFar
+    withSplices (map id $ postAttrs st post) $ runTemplateForPost soFar
 
 
 ------------------------------------------------------------------------------
@@ -264,7 +266,7 @@ serveIndex soFar content = do
     let autoDiscovery' = X.Element "link"
                                 [ ("rel" , "alternate"           )
                                 , ("type", "application/atom+xml")
-                                , ("href", T.pack $ feedURL      ) ]
+                                , ("href", T.pack feedURL      ) ]
                                 []
 
     let autoDiscovery = if EL.matchList soFar excludes
@@ -282,9 +284,9 @@ serveIndex soFar content = do
 
 
   where
-    loopThru :: StaticPages -> [Post] -> SnapletSplice b v
+    loopThru :: StaticPages -> [Post] -> SnapletISplice b
     loopThru st posts = do
-        node <- liftHeist getParamNode
+        node <- getParamNode
 
         -- here we take the tag's children as a bit of markup to be run for
         -- every post. We'll bind a fresh copy of the post for each run.
@@ -297,20 +299,20 @@ serveIndex soFar content = do
 
         let noPost = if null noPosts then [] else X.childNodes $ head noPosts
 
-        let func post = liftHeist $ runChildrenWith (postAttrs st post)
+        let func post = runChildrenWith (postAttrs st post)
         allNodes <-
             if null posts
-              then liftHeist $ runNodeList noPost
+              then runNodeList noPost
               else mapSnapletSplices func posts
 
-        liftHeist stopRecursion
+        stopRecursion
         return allNodes
 
-mapSnapletSplices :: (a -> SnapletSplice b v)
+mapSnapletSplices :: (a -> SnapletISplice b)
                   -- ^ Splice generating function
                   -> [a]
                   -- ^ List of items to generate splices for
-                  -> SnapletSplice b v
+                  -> SnapletISplice b
                   -- ^ The result of all splices concatenated together.
 mapSnapletSplices f vs = liftM concat $ mapM f vs
 
@@ -331,7 +333,7 @@ serveFeed soFar content = do
     let siteURL'  =  staticPagesSiteURL st
     let posts     =  map (addSiteURL siteURL') $ recentPosts excludes content 5
 
-    templates <- withHeistTS id
+    templates <- withHeistState id
 
     let hasT = hasTemplate (listToPath $ soFar ++ ["index"]) templates
 
@@ -341,8 +343,7 @@ serveFeed soFar content = do
     let siteURL  = B.pack siteURL'
     let baseURL  = B.pack $ staticPagesBaseURL st
     let fdPath   = B.concat $ intersperse "/" $ soFar ++ ["feed.xml"]
-    let feedURL  = B.unpack $ B.concat
-                            $ [siteURL, baseURL, "/", fdPath]
+    let feedURL  = B.unpack $ B.concat [siteURL, baseURL, "/", fdPath]
     let baseFeed = staticPagesFeedInfo st
 
     let feed     = baseFeed {
@@ -355,24 +356,3 @@ serveFeed soFar content = do
     modifyResponse $ setContentType "application/atom+xml"
     writeLBS $ LT.encodeUtf8 $ LT.pack $ XML.showElement $ Atom.xmlFeed feed
 
-{-
-    hasTemplate   <- lift $ liftM isJust $ findTemplateForDirectory soFar
-
-    if null posts || not hasTemplate
-      then mzero
-      else do
-        let siteURL  = B.pack siteURL'
-        let baseURL  = B.pack $ staticPagesBaseURL st
-        let fdPath     = B.concat $ intersperse "/" $ soFar ++ ["feed.xml"]
-        let feedURL  = B.unpack $ B.concat
-                                $ [siteURL, baseURL, "/", fdPath]
-        let baseFeed = staticPagesFeedInfo st
-
-        let feed     = baseFeed {
-                            Atom.feedId      = feedURL
-                          , Atom.feedLinks   = [ Atom.nullLink feedURL ]
-                          , Atom.feedEntries = map unPost posts
-                          , Atom.feedUpdated = Atom.entryUpdated $ unPost (head posts)
-                          }
-        return $ toResponse feed
--}
