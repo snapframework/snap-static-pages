@@ -55,10 +55,11 @@ desc = "Simple blog backed by flat files"
 
 -}
 staticPagesInit :: HasHeist b
-                => FilePath
+                => Snaplet (Heist b)
+                -> FilePath
                 -- ^ path to staticPages directory
                 -> SnapletInit b StaticPages
-staticPagesInit p = makeSnaplet "static-pages" desc Nothing $ do
+staticPagesInit s p = makeSnaplet "static-pages" desc Nothing $ do
     let pth = staticPagesTemplateDir p
     -- make sure directories exist
     liftIO $ mapM_ failIfNotDir [p, contentDir, pth]
@@ -68,7 +69,7 @@ staticPagesInit p = makeSnaplet "static-pages" desc Nothing $ do
 
     cmap <- liftIO $ buildContentMap baseURL contentDir
     
-    addTemplatesAt "" pth
+    addTemplatesAt s "" pth
     addRoutes [ ("", serveStaticPages) ]
 
     return StaticPages {
