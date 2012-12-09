@@ -28,7 +28,6 @@ Library
                    blaze-builder,
                    bytestring,
                    containers,
-                   data-lens-template >= 2.1 && < 2.2,
                    directory,
                    feed,
                    filepath,
