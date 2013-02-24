@@ -1,5 +1,5 @@
 Name:                snap-static-pages
-Version:             0.2.1
+Version:             0.3.0
 Synopsis:            A simple filesystem-based content management system for Snap
 Author:              Gregory Collins
 
@@ -31,10 +31,10 @@ Library
                    directory,
                    feed,
                    filepath,
-                   heist >= 0.10 && <0.11,
+                   heist >= 0.11 && <0.12,
                    mtl >= 2,
                    old-locale,
-                   snap      >= 0.10 && <0.11,
+                   snap      >= 0.10 && <0.12,
                    snap-core >= 0.9 && <0.10,
                    split,
                    system-fileio,
