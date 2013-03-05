@@ -31,7 +31,7 @@ Library
                    directory,
                    feed,
                    filepath,
-                   heist >= 0.10 && <0.12,
+                   heist >= 0.7 && <0.12,
                    mtl >= 2,
                    old-locale,
                    snap      >= 0.9 && <0.12,
