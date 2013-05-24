@@ -297,7 +297,7 @@ serveIndex soFar content = do
         let (noPosts,perEach) =
                 partition (\x -> X.tagName x == Just "no-posts") perEach'
 
-        let noPost = if null noPosts then [] else X.childNodes $ head noPosts
+        let noPost = concatMap X.childNodes noPosts
 
         let func post = runNodeListWith (postAttrs st post) perEach
         allNodes <-
