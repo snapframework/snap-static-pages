@@ -297,9 +297,9 @@ serveIndex soFar content = do
         let (noPosts,perEach) =
                 partition (\x -> X.tagName x == Just "no-posts") perEach'
 
-        let noPost = if null noPosts then [] else X.childNodes $ head noPosts
+        let noPost = concatMap X.childNodes noPosts
 
-        let func post = runChildrenWith (postAttrs st post)
+        let func post = runNodeListWith (postAttrs st post) perEach
         allNodes <-
             if null posts
               then runNodeList noPost
@@ -307,6 +307,8 @@ serveIndex soFar content = do
 
         stopRecursion
         return allNodes
+
+    runNodeListWith splices nodes = localHS (bindSplices splices) (runNodeList nodes)
 
 mapSnapletSplices :: (a -> SnapletISplice b)
                   -- ^ Splice generating function
