@@ -3,12 +3,10 @@
 
 module Snap.StaticPages.Internal.Handlers ( serveStaticPages ) where
 
-import           Control.Arrow
 import           Control.Exception (assert)
 import           Control.Monad.Reader
 import           Control.Monad.State
 import qualified Data.ByteString.Char8 as B
-import qualified Data.ByteString.Lazy.Char8 as L
 import           Data.ByteString.Char8 (ByteString)
 import           Data.List
 import qualified Data.Map as Map
@@ -26,7 +24,6 @@ import qualified Text.Atom.Feed as Atom
 import qualified Text.Atom.Feed.Export as Atom
 import           Heist
 import           Heist.Interpreted
-import           Heist.Splices
 import qualified Text.XmlHtml as X
 import qualified Text.XML.Light.Output as XML
 ------------------------------------------------------------------------------
