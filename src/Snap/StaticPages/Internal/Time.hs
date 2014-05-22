@@ -13,7 +13,7 @@ formatAtomTime tz =  fmt . utcToLocalTime tz
     fmt t = formatTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S" t ++ z
       where
         mins  = timeZoneMinutes tz
-        minus = if mins < 0 then "-" else ""
+        minus = if mins < 0 then "-" else "+"
         h     = printf "%02d" $ abs mins `div` 60
         m     = printf "%02d" $ abs mins `rem` 60
         z     = concat [minus, h, ":", m]
