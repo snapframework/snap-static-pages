@@ -3,12 +3,10 @@
 
 module Snap.StaticPages.Internal.Handlers ( serveStaticPages ) where
 
-import           Control.Arrow
 import           Control.Exception (assert)
 import           Control.Monad.Reader
 import           Control.Monad.State
 import qualified Data.ByteString.Char8 as B
-import qualified Data.ByteString.Lazy.Char8 as L
 import           Data.ByteString.Char8 (ByteString)
 import           Data.List
 import qualified Data.Map as Map
@@ -26,7 +24,6 @@ import qualified Text.Atom.Feed as Atom
 import qualified Text.Atom.Feed.Export as Atom
 import           Heist
 import           Heist.Interpreted
-import           Heist.Splices
 import qualified Text.XmlHtml as X
 import qualified Text.XML.Light.Output as XML
 ------------------------------------------------------------------------------
@@ -147,17 +144,17 @@ showPerson (Atom.Person name _ email _) =
 
 
 
-postAttrs :: (Monad m) => StaticPages -> Post -> [(Text, Splice m)]
-postAttrs st post@(Post p) =
-    [ ("post:content" , return body)
-    , ("post:summary" , return summary)
-    , ("pageTitle"    , return [X.TextNode title])
-    , ("post:id"      , textSplice url)
-    , ("post:date"    , textSplice $ T.pack $ friendlyTime $
-                        getPostTime post)
-    , ("post:url"     , textSplice $ url)
-    , ("post:title"   , textSplice $ showTC $ Atom.entryTitle p)
-    , ("post:authors" , textSplice $ authors) ]
+postAttrs :: (Monad m) => StaticPages -> Post -> Splices (Splice m)
+postAttrs st post@(Post p) = do
+    "post:content" ## return body
+    "post:summary" ## return summary
+    "pageTitle"    ## return [X.TextNode title]
+    "post:id"      ## textSplice url
+    "post:date"    ## textSplice $ T.pack $ friendlyTime $
+                      getPostTime post
+    "post:url"     ## textSplice $ url
+    "post:title"   ## textSplice $ showTC $ Atom.entryTitle p
+    "post:authors" ## textSplice $ authors
   where
     title = T.pack $ concat
               [ getTextContent . Atom.feedTitle . staticPagesFeedInfo $ st
@@ -201,7 +198,7 @@ getTextContent _                   = undefined -- don't support that yet
 servePost :: HasHeist b => [ByteString] -> Post -> StaticPagesHandler b
 servePost soFar post = do
     st <- get
-    withSplices (map id $ postAttrs st post) $ runTemplateForPost soFar
+    withSplices (fmap id $ postAttrs st post) $ runTemplateForPost soFar
 
 
 ------------------------------------------------------------------------------
@@ -224,10 +221,15 @@ serveIndex soFar content = do
     let recent    =  take 5 rchron
 
     let runPosts = loopThru st
-    let splices1 = [ ("posts:alphabetical"        , runPosts alpha)
-                   , ("posts:chronological"       , runPosts chron)
-                   , ("posts:reverseChronological", runPosts rchron)
-                   , ("posts:recent"              , runPosts recent) ]
+--    let splices1 = [ ("posts:alphabetical"        , runPosts alpha)
+--                   , ("posts:chronological"       , runPosts chron)
+--                   , ("posts:reverseChronological", runPosts rchron)
+--                   , ("posts:recent"              , runPosts recent) ]
+    let splices1 = do
+        "posts:alphabetical"         ## runPosts alpha
+        "posts:chronological"        ## runPosts chron
+        "posts:reverseChronological" ## runPosts rchron
+        "posts:recent"               ## runPosts recent
 
     let mbPost  = Map.lookup "index" content
     let baseURL = B.pack $ staticPagesBaseURL st
@@ -258,7 +260,9 @@ serveIndex soFar content = do
                                      "error parsing pandoc output: " ++ s])
                        X.docContent
                        e
-                in ("index:content", return body) : splices1
+                in do
+                    "index:content" ## return body
+                    splices1
 
             _ -> splices1
 
@@ -274,9 +278,10 @@ serveIndex soFar content = do
                           else [autoDiscovery']
 
 
-    let splices3 = ("pageTitle", return [X.TextNode $ T.pack title]) :
-                   ("feed:autoDiscoveryLink", return autoDiscovery) : splices2
-
+    let splices3 = do
+        "pageTitle"              ## return [X.TextNode $ T.pack title]
+        "feed:autoDiscoveryLink" ## return autoDiscovery
+        splices2
     let tpath = listToPath $ soFar ++ ["index"]
 
     withSplices splices3 $ renderAs "text/html; charset=utf-8" tpath
