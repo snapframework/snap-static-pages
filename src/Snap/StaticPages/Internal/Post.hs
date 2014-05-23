@@ -305,7 +305,8 @@ buildContentMap baseURL basedir = build [] "."
         file mp f = do
             let fp = basedir </> pathSoFar </> f
 
-            if ".md" `isSuffixOf` f then do
+            if any (`isSuffixOf` f) [".md", ".markdown"]
+              then do
                 -- it's a post
                 let baseName = dropExtension f
                 let pId = concat [baseURL, "/", pathSoFar, "/", baseName]
