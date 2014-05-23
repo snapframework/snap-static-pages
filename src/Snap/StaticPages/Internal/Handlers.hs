@@ -221,10 +221,6 @@ serveIndex soFar content = do
     let recent    =  take 5 rchron
 
     let runPosts = loopThru st
---    let splices1 = [ ("posts:alphabetical"        , runPosts alpha)
---                   , ("posts:chronological"       , runPosts chron)
---                   , ("posts:reverseChronological", runPosts rchron)
---                   , ("posts:recent"              , runPosts recent) ]
     let splices1 = do
         "posts:alphabetical"         ## runPosts alpha
         "posts:chronological"        ## runPosts chron
