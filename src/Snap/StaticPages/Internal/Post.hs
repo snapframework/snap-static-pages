@@ -308,7 +308,9 @@ buildContentMap baseURL basedir = build [] "."
             if ".md" `isSuffixOf` f then do
                 -- it's a post
                 let baseName = dropExtension f
-                let pId = concat [baseURL, "/", pathSoFar, "/", baseName]
+                let pId = if null pathSoFar
+                            then concat [baseURL, "/", baseName]
+                            else concat [baseURL, "/", pathSoFar, "/", baseName]
                 !p <- readPost pId fp
                 return $! Map.insert (B.pack baseName) (ContentPost p) mp
               else
