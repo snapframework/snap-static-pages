@@ -7,8 +7,6 @@ where
 
 import           Control.Exception
 import           Data.Typeable
-import           Prelude hiding (catch)
-
 
 -- | 'StaticPagesException' is the exception type thrown when StaticPages
 -- encounters an error.
