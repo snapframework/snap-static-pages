@@ -10,6 +10,7 @@ import qualified Data.ByteString.Char8 as B
 import           Data.ByteString.Char8 (ByteString)
 import           Data.List
 import qualified Data.Map as Map
+import           Data.Map.Syntax ((##))
 import           Data.Maybe
 import           Data.Text (Text)
 import qualified Data.Text as T
