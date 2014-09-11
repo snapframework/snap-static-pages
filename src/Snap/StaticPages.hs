@@ -23,7 +23,7 @@ import           Control.Monad
 import           Control.Monad.Trans
 import qualified Data.ByteString.Char8 as B
 import           Data.Aeson
-import qualified Data.Attoparsec as Atto
+import qualified Data.Attoparsec.ByteString as Atto
 import           Data.List
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as T

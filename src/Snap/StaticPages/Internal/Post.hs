@@ -3,6 +3,7 @@
 {-# LANGUAGE OverloadedStrings  #-}
 {-# LANGUAGE PackageImports #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE CPP #-}
 
 module Snap.StaticPages.Internal.Post
   ( getTimeStamp
@@ -35,7 +36,11 @@ where
 ------------------------------------------------------------------------
 import           Control.Applicative
 import           Control.Exception
+#if MIN_VERSION_mtl(2,2,1)
+import           Control.Monad.Except
+#else
 import           Control.Monad.Error
+#endif
 import qualified Data.Attoparsec.Text as Atto
 import           Data.Attoparsec.Text (Parser)
 import qualified Data.ByteString.Char8 as B
