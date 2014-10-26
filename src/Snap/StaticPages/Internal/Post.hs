@@ -1,9 +1,9 @@
 {-# LANGUAGE BangPatterns       #-}
+{-# LANGUAGE CPP                #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 {-# LANGUAGE OverloadedStrings  #-}
-{-# LANGUAGE PackageImports #-}
+{-# LANGUAGE PackageImports     #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE CPP #-}
 
 module Snap.StaticPages.Internal.Post
   ( getTimeStamp
@@ -41,34 +41,33 @@ import           Control.Monad.Except
 #else
 import           Control.Monad.Error
 #endif
-import qualified Data.Attoparsec.Text as Atto
-import           Data.Attoparsec.Text (Parser)
-import qualified Data.ByteString.Char8 as B
-import           Data.ByteString.Char8 (ByteString)
-import qualified Data.ByteString.UTF8 as UTF8
+import           Data.Attoparsec.Text                       (Parser)
+import qualified Data.Attoparsec.Text                       as Atto
+import           Data.ByteString.Char8                      (ByteString)
+import qualified Data.ByteString.Char8                      as B
 import           Data.Char
 import           Data.List
 import           Data.List.Split
-import qualified Data.Map as Map
-import           Data.Map (Map)
+import           Data.Map                                   (Map)
+import qualified Data.Map                                   as Map
 import           Data.String
-import           Data.Text (Text)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as T
+import           Data.Text                                  (Text)
+import qualified Data.Text                                  as T
+import qualified Data.Text.Encoding                         as T
 import           Data.Time.Clock
 import           Data.Time.LocalTime
-import qualified Filesystem as F
+import qualified Filesystem                                 as F
+import           Heist.Splices.Markdown
 import           System.Directory
 import           System.FilePath
 import           Text.Atom.Feed
 import           Text.XML.Light
-import           Heist.Splices.Markdown
 
 ------------------------------------------------------------------------
 import           Snap.StaticPages.Internal.Time
 import           Snap.StaticPages.Internal.Types
-import qualified Snap.StaticPages.Internal.Util.ExcludeList as EL
 import           Snap.StaticPages.Internal.Util.ExcludeList (ExcludeList)
+import qualified Snap.StaticPages.Internal.Util.ExcludeList as EL
 ------------------------------------------------------------------------
 
 
@@ -195,7 +194,7 @@ parseHeaders :: ByteString   -- ^ headers
              -> IO Post
 parseHeaders str table post = do
     kvps <- stringToHeaders str
-    
+
     return $ foldl (\p (k,f) -> case Map.lookup (T.pack k) kvps of
                                   Nothing -> p
                                   Just x  -> f (T.unpack x) p)
@@ -225,7 +224,7 @@ readPost pId path = do
 
     html <- pandocBS pandocpath body
 
-    return $! setEntryHTMLContent (UTF8.toString html)
+    return $! setEntryHTMLContent (T.unpack $ T.decodeUtf8 html)
            $! setEntryLinks [ (nullLink pId) {
                                   linkRel = Just $ Left "alternate"
                               } ]
