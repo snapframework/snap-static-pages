@@ -1,11 +1,14 @@
+{-# LANGUAGE CPP #-}
 module Snap.StaticPages.Internal.Time where
 
 import           Data.Time.Clock
 import           Data.Time.Format
 import           Data.Time.LocalTime
-import           System.Locale
 import           Text.Printf
 
+#if !MIN_VERSION_time(1,5,0)
+import           System.Locale
+#endif
 
 formatAtomTime :: TimeZone -> UTCTime -> String
 formatAtomTime tz =  fmt . utcToLocalTime tz
@@ -25,4 +28,3 @@ parseAtomTime s = readTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Z" s
 
 friendlyTime :: ZonedTime -> String
 friendlyTime t = formatTime defaultTimeLocale "%b %e, %Y" t
-                     
