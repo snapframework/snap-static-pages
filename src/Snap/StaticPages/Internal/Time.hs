@@ -1,9 +1,6 @@
 module Snap.StaticPages.Internal.Time where
 
-import           Data.Time.Clock
-import           Data.Time.Format
-import           Data.Time.LocalTime
-import           System.Locale
+import           Data.Time
 import           Text.Printf
 
 
@@ -20,7 +17,7 @@ formatAtomTime tz =  fmt . utcToLocalTime tz
 
 
 parseAtomTime :: String -> ZonedTime
-parseAtomTime s = readTime defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Z" s
+parseAtomTime s = parseTimeOrError True defaultTimeLocale "%Y-%m-%dT%H:%M:%S%Z" s
 
 
 friendlyTime :: ZonedTime -> String
