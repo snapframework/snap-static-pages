@@ -68,7 +68,7 @@ staticPagesInit s p = makeSnaplet "static-pages" desc Nothing $ do
         liftIO $ readConfig configFilePath
 
     cmap <- liftIO $ buildContentMap baseURL contentDir
-    
+
     addTemplatesAt s "" pth
     addRoutes [ ("", serveStaticPages) ]
 
